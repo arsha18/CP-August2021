@@ -1,0 +1,79 @@
+from sklearn.datasets import load_boston
+import numpy as np
+
+boston = load_boston()
+X = boston.data
+y = boston.target
+m = X.shape[0]  
+n = X.shape[1]  
+
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+intercept = np.ones((X_train.shape[0], 1))
+X_train = np.concatenate((intercept, X_train), axis=1)
+intercept = np.ones((X_test.shape[0], 1))
+X_test = np.concatenate((intercept, X_test), axis=1)
+
+class LinearRegression:
+    
+    def __init__(self, alpha=0.002, max_iter=10000, 
+            loss_old=10000, tol=1e-5, method="batch"):
+        self.alpha = alpha
+        self.max_iter = max_iter
+        self.loss_old = loss_old
+        self.tol = tol
+        self.method = method
+    def fit(self, X, y):
+        self.theta = np.zeros(X.shape[1])
+        iter_stop = 0
+        list_of_used_ix = [] 
+        
+        for i in range(self.max_iter):
+            
+            if self.method != "batch":
+                i = np.random.randint(X.shape[0])
+                while i in list_of_used_ix:
+                    i = np.random.randint(X.shape[0])
+                X_train = X[i, :].reshape(1, -1)
+                y_train = y[i]
+                list_of_used_ix.append(i)
+                if len(list_of_used_ix) == X.shape[0]:
+                    list_of_used_ix = []
+            else:
+                X_train = X
+                y_train = y
+            
+            yhat = self.h_theta(X_train)
+            error = yhat - y_train
+            
+            
+            loss_new = self.mse(yhat, y_train)
+            if self.delta_loss(loss_new, self.loss_old, self.tol):  #np.allclose
+                iter_stop = i
+                break
+            self.loss_old = loss_new
+
+            grad = self.gradient(X_train, error)
+            self.theta = self.theta - self.alpha * grad
+        
+    def h_theta(self, X):
+        return X @ self.theta
+
+    def mse(self, yhat, y):
+        return ((yhat - y)**2 / yhat.shape[0]).sum()
+
+    def delta_loss(self, loss_new, loss_old, tol):
+        return np.abs(loss_new - loss_old) < tol
+
+    def gradient(self, X, error):
+        return X.T @ error
+
+model = LinearRegression(method="sto") 
+model.fit(X_train, y_train)
+yhat = model.h_theta(X_test)
+mse = model.mse(yhat, y_test)
+print("MSE: ", mse)
